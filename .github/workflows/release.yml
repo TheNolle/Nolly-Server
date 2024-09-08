@@ -28,12 +28,15 @@ jobs:
           if [[ "$COMMIT_MSG" =~ ^\[New\ Version\]\ ([^|]*)\ \|\ (.*)$ ]]; then
             JAR_NAME="${BASH_REMATCH[1]}"
             DESCRIPTION="${BASH_REMATCH[2]}"
-            VERSION_TAG=$(echo "$JAR_NAME" | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+)\.jar/\1/')
+            VERSION_TAG=$(echo "$JAR_NAME" | sed -E 's/.*-v([0-9]+\.[0-9]+\.[0-9]+)\.jar/\1/')
+            RELEASE_NAME=$(echo "$JAR_NAME" | sed -E 's/\.jar//' | tr '-' ' ')
             echo "Detected version: $VERSION_TAG"
             echo "Jar name: $JAR_NAME"
+            echo "Release name: $RELEASE_NAME"
             echo "::set-output name=jar_name::$JAR_NAME"
             echo "::set-output name=description::$DESCRIPTION"
             echo "::set-output name=version_tag::$VERSION_TAG"
+            echo "::set-output name=release_name::$RELEASE_NAME"
           else
             echo "No new version detected, skipping build."
             exit 0
@@ -57,12 +60,14 @@ jobs:
           git config --local user.email "github-actions@github.com"
           git tag -a "v${{ steps.parse_commit.outputs.version_tag }}" -m "Release version ${{ steps.parse_commit.outputs.version_tag }}"
           git push origin "v${{ steps.parse_commit.outputs.version_tag }}"
+          echo "Created tag v${{ steps.parse_commit.outputs.version_tag }}"
 
       - name: Create GitHub Release
         if: steps.parse_commit.outputs.jar_name
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ steps.parse_commit.outputs.version_tag }}"
+          name: ${{ steps.parse_commit.outputs.release_name }} # Use the formatted release name
           files: build/libs/${{ steps.parse_commit.outputs.jar_name }}
           body: ${{ steps.parse_commit.outputs.description }}
         env:
