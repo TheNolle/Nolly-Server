@@ -11,11 +11,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '21'
+
       - name: Parse commit message
         id: parse_commit
         run: |
@@ -30,15 +32,19 @@ jobs:
           else
             echo "No new version detected, skipping build."
             exit 0
+          fi  # <-- This was missing
+
       - name: Build with ShadowJar
         if: steps.parse_commit.outputs.jar_name
         run: ./gradlew shadowJar
+
       - name: Rename jar file
         if: steps.parse_commit.outputs.jar_name
         run: |
           JAR_PATH=$(find build/libs -name '*.jar' | head -n 1)
           mv "$JAR_PATH" "build/libs/${{ steps.parse_commit.outputs.jar_name }}.jar"
           echo "Renamed jar to ${{ steps.parse_commit.outputs.jar_name }}.jar"
+
       - name: Create GitHub Release
         if: steps.parse_commit.outputs.jar_name
         uses: softprops/action-gh-release@v1
