@@ -1,0 +1,49 @@
+name: Build and Release Jar
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Parse commit message
+        id: parse_commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+          # Use regex to detect if commit is a new version release
+          if [[ "$COMMIT_MSG" =~ ^\[New\ Version\]\ ([^|]*)\ \|\ (.*)$ ]]; then
+            JAR_NAME="${BASH_REMATCH[1]}"
+            DESCRIPTION="${BASH_REMATCH[2]}"
+            echo "::set-output name=jar_name::$JAR_NAME"
+            echo "::set-output name=description::$DESCRIPTION"
+          else
+            echo "No new version detected, skipping build."
+            exit 0
+      - name: Build with ShadowJar
+        if: steps.parse_commit.outputs.jar_name
+        run: ./gradlew shadowJar
+      - name: Rename jar file
+        if: steps.parse_commit.outputs.jar_name
+        run: |
+          JAR_PATH=$(find build/libs -name '*.jar' | head -n 1)
+          mv "$JAR_PATH" "build/libs/${{ steps.parse_commit.outputs.jar_name }}.jar"
+          echo "Renamed jar to ${{ steps.parse_commit.outputs.jar_name }}.jar"
+      - name: Create GitHub Release
+        if: steps.parse_commit.outputs.jar_name
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/libs/${{ steps.parse_commit.outputs.jar_name }}.jar
+          body: ${{ steps.parse_commit.outputs.description }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
