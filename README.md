@@ -132,5 +132,5 @@ Stay up to date with my projects and content:
 - **Twitch:** [@thenolly](https://twitch.tv/thenolly)
 - **Reddit:** [u/thenolle](https://reddit.com/u/thenolle)
 - **Discord:** [nolly's cafe](https://thenolle.com/)
-- **Patreon:** [@nolly](https://patreon.com/nolly)
+- **Patreon:** [@_nolly](https://patreon.com/_nolly)
 - **Ko-fi:** [@nolly__](https://ko-fi.com/nolly__)
