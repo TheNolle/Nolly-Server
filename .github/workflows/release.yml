@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -27,12 +28,16 @@ jobs:
           if [[ "$COMMIT_MSG" =~ ^\[New\ Version\]\ ([^|]*)\ \|\ (.*)$ ]]; then
             JAR_NAME="${BASH_REMATCH[1]}"
             DESCRIPTION="${BASH_REMATCH[2]}"
+            VERSION_TAG=$(echo "$JAR_NAME" | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+)\.jar/\1/')
+            echo "Detected version: $VERSION_TAG"
+            echo "Jar name: $JAR_NAME"
             echo "::set-output name=jar_name::$JAR_NAME"
             echo "::set-output name=description::$DESCRIPTION"
+            echo "::set-output name=version_tag::$VERSION_TAG"
           else
             echo "No new version detected, skipping build."
             exit 0
-          fi  # <-- This was missing
+          fi
 
       - name: Build with ShadowJar
         if: steps.parse_commit.outputs.jar_name
@@ -42,14 +47,23 @@ jobs:
         if: steps.parse_commit.outputs.jar_name
         run: |
           JAR_PATH=$(find build/libs -name '*.jar' | head -n 1)
-          mv "$JAR_PATH" "build/libs/${{ steps.parse_commit.outputs.jar_name }}.jar"
-          echo "Renamed jar to ${{ steps.parse_commit.outputs.jar_name }}.jar"
+          mv "$JAR_PATH" "build/libs/${{ steps.parse_commit.outputs.jar_name }}"
+          echo "Renamed jar to ${{ steps.parse_commit.outputs.jar_name }}"
+
+      - name: Create Git Tag
+        if: steps.parse_commit.outputs.jar_name
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+          git tag -a "v${{ steps.parse_commit.outputs.version_tag }}" -m "Release version ${{ steps.parse_commit.outputs.version_tag }}"
+          git push origin "v${{ steps.parse_commit.outputs.version_tag }}"
 
       - name: Create GitHub Release
         if: steps.parse_commit.outputs.jar_name
         uses: softprops/action-gh-release@v1
         with:
-          files: build/libs/${{ steps.parse_commit.outputs.jar_name }}.jar
+          tag_name: "v${{ steps.parse_commit.outputs.version_tag }}"
+          files: build/libs/${{ steps.parse_commit.outputs.jar_name }}
           body: ${{ steps.parse_commit.outputs.description }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
